@@ -38,6 +38,13 @@ Then, inside your project:
 /rules-guard:install
 ```
 
+## Re-checking an install
+
+`/rules-guard:install` is idempotent: run it again after an update, or in a repo you are not
+sure about. It reads both `settings.json` and `settings.local.json`, leaves a key alone wherever
+it already lives, honours `core.hooksPath`, and flags a stale `.git/hooks/commit-msg` that would
+wake up if that setting were ever unset.
+
 ## What the plugin cannot do by itself
 
 - Write your `settings.json` (`includeCoAuthoredBy`, `attribution`, `CLAUDE_CODE_THRIFTY_SONIC`).
@@ -72,6 +79,13 @@ Rules without `paths:` apply everywhere.
 
 `python3` on PATH, and `git` for the `Stop` check. On Windows without WSL, change `python3` to
 `python` in `hooks/hooks.json`.
+
+## Warnings, or the lack of them
+
+The validator is binary on purpose: it blocks, or it stays quiet. There is no advisory level.
+A warning that does not block gets ignored after the third time, and turning the `Stop` check
+into a commentator would end every turn with unsolicited suggestions. Rules are for things worth
+blocking; anything softer belongs in a review, not a hook.
 
 ## Notes
 

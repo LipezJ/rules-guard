@@ -9,17 +9,27 @@ Set RG_BASH_GUARD=off to disable.
 """
 import json, os, re, sys
 
+# Source-ish files: only edits to these are worth intercepting.
+SOURCE_EXT = (r"(?:[A-Za-z0-9_.\-/]+\.(?:java|kt|kts|ts|tsx|js|jsx|py|rb|go|rs|c|h|cpp|cs|php|swift|"
+              r"sql|sh|bash|zsh|yml|yaml|json|toml|xml|gradle|md|txt|env|conf|cfg|ini|properties))")
+
 PATTERNS = [
     (r"\bsed\s+(-[a-zA-Z]*\s+)*-i\b|\bsed\s+-i", "sed -i"),
     (r"\bperl\s+-[a-zA-Z]*i", "perl -i"),
-    (r"\btee\s+(?!-a?\s*/dev/null)", "tee"),
-    (r">>?\s*(?!/dev/null|&\d)[^\s|;&<>]+", "redirect to file"),
-    (r"<<\s*'?[A-Za-z_]+'?", "heredoc"),
-    (r"\b(python3?|node)\s+-[ce]\b", "inline script that may write"),
-    (r"\b(cp|mv)\s+[^|;&]*\s+[^\s|;&]+", "cp/mv over repo files"),
+    (r"\btee\s+(?:-a\s+)?" + SOURCE_EXT, "tee into a file"),
+    # a real file redirect; NOT `> /dev/null`, `>&2`, `> -` or a pipe into a command's stdin
+    (r">>?\s*" + SOURCE_EXT, "redirect into a file"),
+    # inline scripts only when they actually look like they write
+    (r"\b(?:python3?|node)\s+-[ce]\b(?=[^|;&]*(?:open\s*\([^)]*['\"][wa]|writeFileSync|"
+     r"write_text|>\s*[A-Za-z0-9_.\-/]+))", "inline script that writes files"),
+    (r"\b(?:cp|mv)\s+[^|;&]*\s+" + SOURCE_EXT + r"\s*(?:$|[|;&])", "cp/mv onto a source file"),
 ]
+# A heredoc on its own feeds a command's stdin (gh pr create --body-file -, git commit -F -):
+# that is not a file edit. `cat > file <<EOF` is still caught by the redirect pattern above.
+
 # commands where a redirect is routine and not a source edit
-SAFE_PREFIX = re.compile(r"^\s*(git|grep|rg|ls|find|cat\s+[^>]*$|echo\s+[^>]*$|npm|pnpm|yarn|pytest|make|docker|curl)\b")
+SAFE_PREFIX = re.compile(r"^\s*(git|gh|glab|grep|rg|ls|find|cat\s+[^>]*$|echo\s+[^>]*$|npm|pnpm|yarn|"
+                         r"pytest|make|gradle|\./gradlew|mvn|docker|kubectl|curl|jq|awk|sort|uniq|head|tail)\b")
 
 
 def main():
