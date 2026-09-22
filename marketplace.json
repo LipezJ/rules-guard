@@ -1,0 +1,11 @@
+{
+  "name": "rules-guard-marketplace",
+  "owner": { "name": "LipezJ" },
+  "plugins": [
+    {
+      "name": "rules-guard",
+      "source": "./",
+      "description": "Enforces .claude/rules on every turn and stops shell-based edits from bypassing them"
+    }
+  ]
+}

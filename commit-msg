@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Deterministic layer: strip Claude attribution trailers from the commit message.
+# Install:  cp git-hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
+# (or:  git config core.hooksPath git-hooks)
+msg="$1"
+tmp="$(mktemp)"
+grep -vE '^(Co-[Aa]uthored-[Bb]y: Claude|.*Generated with \[?Claude Code)' "$msg" > "$tmp"
+# collapse trailing blank lines
+awk 'BEGIN{RS="";ORS="\n\n"}1' "$tmp" | sed -e :a -e '/^\n*$/{$d;N;ba}' > "$msg"
+rm -f "$tmp"

@@ -1,0 +1,7 @@
+{
+  "includeCoAuthoredBy": false,
+  "attribution": { "coAuthoredBy": false },
+  "env": {
+    "CLAUDE_CODE_THRIFTY_SONIC": "0"
+  }
+}

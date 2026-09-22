@@ -1,0 +1,46 @@
+{
+  "description": "SessionStart: injects every project rule. PreToolUse(Bash): blocks shell edits and Claude attribution trailers. PostToolUse(Edit/Write): quick, cheap review with Haiku. Stop: Sonnet subagent validates the turn's git diff against .claude/rules.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/inject_rules.py\"", "timeout": 15 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/guard_bash.py\"", "timeout": 15 },
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/guard_commit.py\"", "timeout": 15 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "prompt",
+            "model": "claude-haiku-4-5-20251001",
+            "timeout": 30,
+            "prompt": "You are a project rule validator. Be fast and terse: decide, do not elaborate.\n\nHook event (includes tool_input with the content that was written):\n$ARGUMENTS\n\nThe project rules are in the session context (<project-rules> block). Judge ONLY the content you can see in the event. Block only for a clear, concrete violation of a rule that applies to this file; name the rule and give a one-line fix. If in doubt, or if no rule applies, allow with no comment."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "agent",
+            "model": "claude-sonnet-5",
+            "timeout": 120,
+            "prompt": "Validate the project rules against this turn's changes.\n1) Read every .md under .claude/rules, including files with a paths: frontmatter.\n2) Find what changed with `git status --porcelain -uall`, `git diff` and `git diff --cached`. This covers edits made with sed, heredocs or scripts, not just Edit/Write.\n3) For each modified file, apply the rules whose paths: matches it, plus every rule with no paths:.\nIf there are clear violations, block and list: file, rule violated, concrete fix. If you find none, or the repo has no rules, allow with no comment. If in doubt, allow."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "rules-guard",
+  "version": "0.3.0",
+  "description": "Enforces .claude/rules on every turn and stops shell-based edits from bypassing them"
+}
