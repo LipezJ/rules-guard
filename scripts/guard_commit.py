@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """rules-guard (PreToolUse/Bash): blocks commits carrying Claude attribution trailers.
 Complements includeCoAuthoredBy/attribution, which several issues report is not always honored
-when the commit message is hand-built from Bash. Exit 2 => blocked, and Claude reads why."""
+when the commit message is hand-built from Bash. Denies via JSON so the reason reaches both
+Claude and the user (systemMessage)."""
 import json, re, sys
 
 MARKERS = [
@@ -20,10 +21,17 @@ def main():
     hits = [name for rx, name in MARKERS if re.search(rx, cmd, re.IGNORECASE)]
     if not hits:
         return 0
-    print("rules-guard: this commit carries Claude attribution (" + ", ".join(hits) + ").\n"
-          "This repo does not use it. Redo the commit with a clean message: no Co-Authored-By "
-          "trailer and no 'Generated with Claude Code' line.", file=sys.stderr)
-    return 2
+    what = ", ".join(hits)
+    reason = ("rules-guard: this commit carries Claude attribution (" + what + "). This repo does not "
+              "use it. Redo the commit with a clean message: no Co-Authored-By trailer and no "
+              "'Generated with Claude Code' line.")
+    print(json.dumps({
+        "hookSpecificOutput": {"hookEventName": "PreToolUse",
+                               "permissionDecision": "deny",
+                               "permissionDecisionReason": reason},
+        "systemMessage": f"rules-guard blocked a commit carrying Claude attribution ({what}).",
+    }))
+    return 0
 
 
 if __name__ == "__main__":

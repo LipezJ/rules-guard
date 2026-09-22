@@ -25,7 +25,7 @@
             "type": "prompt",
             "model": "claude-haiku-4-5-20251001",
             "timeout": 30,
-            "prompt": "You are a project rule validator. Be fast and terse: decide, do not elaborate.\n\nHook event (includes tool_input with the content that was written):\n$ARGUMENTS\n\nThe project rules are in the session context (<project-rules> block). Judge ONLY the content you can see in the event. Block only for a clear, concrete violation of a rule that applies to this file; name the rule and give a one-line fix. If in doubt, or if no rule applies, allow with no comment."
+            "prompt": "You are a project rule validator. Be fast and terse: decide, do not elaborate.\n\nHook event (includes tool_input with the content that was written):\n$ARGUMENTS\n\nThe rules are in the session context (<project-rules> block): it holds the user-level, project and nested .claude/rules files, each under its own ### path heading. You have no tools, so that block is the only rule source you may use. Judge ONLY the content you can see in the event, and ONLY against rules that are literally present in that block.\n\nTo block you must be able to do all three: (a) name the rule file it came from, (b) quote the rule text verbatim, (c) point at the exact line of content that violates it. If you cannot do all three, allow. Never infer, generalize or invent a rule, and never block on a rule whose paths: does not match this file. If two rules conflict, allow. If in doubt, allow.\n\nWhen you block, give the file, the quoted rule and a one-line fix. Otherwise allow with no comment."
           }
         ]
       }
@@ -37,7 +37,7 @@
             "type": "agent",
             "model": "claude-sonnet-5",
             "timeout": 120,
-            "prompt": "Validate the project rules against this turn's changes.\n1) Read every .md under .claude/rules, including files with a paths: frontmatter.\n2) Find what changed with `git status --porcelain -uall`, `git diff` and `git diff --cached`. This covers edits made with sed, heredocs or scripts, not just Edit/Write.\n3) For each modified file, apply the rules whose paths: matches it, plus every rule with no paths:.\nIf there are clear violations, block and list: file, rule violated, concrete fix. If you find none, or the repo has no rules, allow with no comment. If in doubt, allow."
+            "prompt": "Validate the project rules against this turn's changes.\n1) Read every rule file that applies here: ~/.claude/rules (user-level), .claude/rules at the repo root, and any nested <subdir>/.claude/rules; include files with a paths: frontmatter. A nested rule applies only inside its own directory.\n2) Find what changed with `git status --porcelain -uall`, `git diff` and `git diff --cached`. This covers edits made with sed, heredocs or scripts, not just Edit/Write.\n3) For each modified file, apply the rules whose paths: matches it, plus every rule with no paths:.\nIf there are clear violations, block and list: file, rule violated, concrete fix. Start the blocking reason with 'RULES-GUARD BLOCKED:' and add a final line telling Claude to relay this reason to the user verbatim before fixing anything, so the user is never left wondering why the turn stopped. If you find none, or the repo has no rules, allow with no comment. If in doubt, allow."
           }
         ]
       }

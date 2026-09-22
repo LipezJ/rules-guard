@@ -3,7 +3,8 @@
 (sed -i, redirections, tee, heredocs, python -c writes) and asks Claude to use Edit/Write
 instead, so path-scoped rules and Read/Edit/Write hooks fire again.
 
-Exit 2 => the Bash call is blocked and Claude reads the reason.
+Denies via JSON so the reason reaches Claude AND the user (systemMessage), instead of
+exit 2, whose stderr only ever reaches Claude.
 Set RG_BASH_GUARD=off to disable.
 """
 import json, os, re, sys
@@ -40,12 +41,18 @@ def main():
     if not hits:
         return 0
 
-    print("rules-guard: this command looks like it edits files from Bash (" + ", ".join(sorted(set(hits))) + ").\n"
-          "Use the Edit/Write/Read tools instead: shell edits bypass path-scoped .claude/rules "
-          "and the project's hooks.\n"
-          "If the command is genuinely needed (builds, generated files, tool output), say so "
-          "explicitly and retry with RG_BASH_GUARD=off in the environment.", file=sys.stderr)
-    return 2
+    what = ", ".join(sorted(set(hits)))
+    reason = ("rules-guard: this command looks like it edits files from Bash (" + what + "). "
+              "Use the Edit/Write/Read tools instead: shell edits bypass path-scoped .claude/rules "
+              "and the project's hooks. If the command is genuinely needed (builds, generated files, "
+              "tool output), tell the user why and retry with RG_BASH_GUARD=off in the environment.")
+    print(json.dumps({
+        "hookSpecificOutput": {"hookEventName": "PreToolUse",
+                               "permissionDecision": "deny",
+                               "permissionDecisionReason": reason},
+        "systemMessage": f"rules-guard blocked a Bash file edit ({what}). Asked Claude to use Edit/Write instead.",
+    }))
+    return 0
 
 
 if __name__ == "__main__":
